@@ -1,8 +1,14 @@
 # auto_comment
 
-A simple Python tool that adds a generated `comment` column to flat files (`CSV` or `XLSX`).
+A simple Python tool that adds Excel header comments from a flat file (`CSV` or `XLSX`).
 
 It is designed for non-technical users: run one command, answer prompts, and get an output file.
+
+## Important behavior
+
+- `CSV` files cannot store hover comments.
+- The output is always `.xlsx` so users can hover header cells to read comments.
+- The tool does **not** create a new `comment` column.
 
 ## Features
 
@@ -12,8 +18,8 @@ It is designed for non-technical users: run one command, answer prompts, and get
   - lowercases text
   - removes internal spaces
   - example: ` Sales Amount ` -> `salesamount`
-- Lets you define comment templates per column
-- Writes output in the same format as input (`csv -> csv`, `xlsx -> xlsx`)
+- Lets you define one header comment per column
+- Writes output as `.xlsx` with Excel comments attached to header cells
 - Logs execution details to a file
 
 ## 1) Create virtual environment
@@ -53,30 +59,11 @@ python main.py
 
 1. Enter input file path (`.csv` or `.xlsx`).
 2. The app normalizes headers.
-3. Enter a comment template for each column.
-4. Enter the output comment column name and separator.
-5. The app writes the output file.
+3. Enter a header comment for each column.
+4. The app writes an `.xlsx` output file.
+5. Open output file and hover the header cells to read comments.
 
-If you leave a template blank for a column, that column is skipped.
-
-## Template placeholders
-
-You can use these placeholders inside each template:
-
-- `{column}`: normalized column name
-- `{value}`: current cell value
-- `{row_number}`: current row index (starting from 1)
-
-Example templates:
-
-- for `salesamount`: `Sales={value}`
-- for `region`: `Region={value}`
-
-Result example:
-
-```text
-Sales=120 | Region=HN
-```
+If you leave a comment blank for a column, that column is skipped.
 
 ## Logging
 

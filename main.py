@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 
 from openpyxl import Workbook, load_workbook
+from openpyxl.comments import Comment
 
 LOGGER_NAME = "auto_comment"
 DEFAULT_LOG_FILE = "auto_comment.log"
@@ -81,19 +82,17 @@ def read_xlsx(file_path: Path) -> tuple[list[str], list[dict[str, str]], str]:
     if not any(raw_headers):
         raise ValueError("Header row was not found in XLSX file.")
 
-    headers = raw_headers
     rows: list[dict[str, str]] = []
-
     for row_values in data[1:]:
         row_dict: dict[str, str] = {}
-        for idx, header in enumerate(headers):
+        for idx, header in enumerate(raw_headers):
             if not header:
                 continue
             value = row_values[idx] if idx < len(row_values) else ""
             row_dict[header] = to_text(value)
         rows.append(row_dict)
 
-    return headers, rows, "xlsx"
+    return raw_headers, rows, "xlsx"
 
 
 def normalize_table(headers: list[str], rows: list[dict[str, str]]) -> tuple[list[str], list[dict[str, str]]]:
@@ -125,14 +124,12 @@ def load_flat_file(file_path: Path) -> tuple[list[str], list[dict[str, str]], st
     return normalized_headers, normalized_rows, source_info
 
 
-def write_csv(file_path: Path, headers: list[str], rows: list[dict[str, str]]) -> None:
-    with file_path.open("w", newline="", encoding="utf-8-sig") as f:
-        writer = csv.DictWriter(f, fieldnames=headers)
-        writer.writeheader()
-        writer.writerows(rows)
-
-
-def write_xlsx(file_path: Path, headers: list[str], rows: list[dict[str, str]]) -> None:
+def write_xlsx_with_header_comments(
+    file_path: Path,
+    headers: list[str],
+    rows: list[dict[str, str]],
+    header_comments: dict[str, str],
+) -> None:
     workbook = Workbook()
     sheet = workbook.active
 
@@ -140,18 +137,12 @@ def write_xlsx(file_path: Path, headers: list[str], rows: list[dict[str, str]]) 
     for row in rows:
         sheet.append([row.get(h, "") for h in headers])
 
+    for idx, header in enumerate(headers, start=1):
+        comment_text = header_comments.get(header, "")
+        if comment_text:
+            sheet.cell(row=1, column=idx).comment = Comment(comment_text, "auto_comment")
+
     workbook.save(file_path)
-
-
-def save_flat_file(file_path: Path, headers: list[str], rows: list[dict[str, str]]) -> None:
-    suffix = file_path.suffix.lower()
-
-    if suffix == ".csv":
-        write_csv(file_path, headers, rows)
-    elif suffix == ".xlsx":
-        write_xlsx(file_path, headers, rows)
-    else:
-        raise ValueError("Output file must use .csv or .xlsx extension.")
 
 
 def ask_input(prompt: str, default: str | None = None, allow_empty: bool = False, strip_value: bool = True) -> str:
@@ -177,26 +168,17 @@ def print_columns(columns: list[str]) -> None:
         print(f"  {idx}. {col}")
 
 
-def build_comment(value: str, column: str, row_number: int, template: str) -> str:
-    return template.format(
-        value=value,
-        column=column,
-        row_number=row_number,
-    )
+def ask_column_comments(columns: list[str]) -> dict[str, str]:
+    print("\nEnter header comment for each column.")
+    print("Leave blank to skip a column.\n")
 
-
-def ask_column_templates(columns: list[str]) -> dict[str, str]:
-    print("\nEnter comment template for each column.")
-    print("Leave blank to skip a column.")
-    print("Supported placeholders: {column}, {value}, {row_number}\n")
-
-    templates: dict[str, str] = {}
+    comments: dict[str, str] = {}
     for col in columns:
-        template = ask_input(f"Template for column '{col}'", allow_empty=True)
-        if template:
-            templates[col] = template
+        comment = ask_input(f"Comment for column '{col}'", allow_empty=True, strip_value=False)
+        if comment.strip():
+            comments[col] = comment
 
-    return templates
+    return comments
 
 
 def main() -> None:
@@ -229,40 +211,21 @@ def main() -> None:
     print_columns(columns)
     logger.info("Loaded %d rows with %d columns", len(rows), len(columns))
 
-    column_templates = ask_column_templates(columns)
-    if not column_templates:
-        print("No template was provided. Nothing to generate.")
-        logger.warning("No templates provided by user")
+    header_comments = ask_column_comments(columns)
+    if not header_comments:
+        print("No comments were provided. Nothing to write.")
+        logger.warning("No header comments provided by user")
         return
 
-    comment_column = ask_input("New comment column name", "comment")
-    separator = ask_input("Separator between comments", " | ", strip_value=False)
-    logger.info("Comment column: %s, templates configured: %d", comment_column, len(column_templates))
-
-    default_output = f"{input_path.stem}_commented{input_path.suffix.lower()}"
-    output_path = Path(ask_input("Output file path", default_output))
-
-    if comment_column not in columns:
-        columns.append(comment_column)
-
-    for row_number, row in enumerate(rows, start=1):
-        comments: list[str] = []
-
-        for col, template in column_templates.items():
-            value = row.get(col, "")
-            comments.append(
-                build_comment(
-                    value=value,
-                    column=col,
-                    row_number=row_number,
-                    template=template,
-                )
-            )
-
-        row[comment_column] = separator.join(comments)
+    default_output = f"{input_path.stem}_commented.xlsx"
+    output_path = Path(ask_input("Output file path (.xlsx)", default_output))
+    if output_path.suffix.lower() != ".xlsx":
+        output_path = output_path.with_suffix(".xlsx")
+        print(f"Output extension adjusted to .xlsx: {output_path}")
+        logger.info("Output extension adjusted to .xlsx: %s", output_path)
 
     try:
-        save_flat_file(output_path, columns, rows)
+        write_xlsx_with_header_comments(output_path, columns, rows, header_comments)
     except Exception as err:  # noqa: BLE001
         print(f"Failed to write file: {err}")
         logger.exception("Failed to write output file: %s", err)
@@ -271,10 +234,15 @@ def main() -> None:
     print("\nCompleted!")
     print(f"- Loaded: {input_path} ({source_info})")
     print(f"- Saved: {output_path}")
-    print(f"- Commented rows: {len(rows)}")
+    print(f"- Header comments added: {len(header_comments)}")
     print(f"- Log file: {log_file}")
 
-    logger.info("Completed successfully. Output file: %s. Rows processed: %d", output_path, len(rows))
+    logger.info(
+        "Completed successfully. Output file: %s. Rows processed: %d. Header comments: %d",
+        output_path,
+        len(rows),
+        len(header_comments),
+    )
 
 
 if __name__ == "__main__":
