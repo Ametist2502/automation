@@ -1,8 +1,8 @@
 # auto_comment
 
-Script Python tao cot `comment` tu dong trong file CSV (flat file), huong toi nguoi dung non-tech.
+Script Python them cot `comment` tu dong cho flat file `CSV` hoac `XLSX`, huong toi nguoi dung non-tech.
 
-## 1) Tao moi truong (da dung uv venv)
+## 1) Tao moi truong
 
 ```bash
 cd auto_comment
@@ -24,7 +24,7 @@ Windows (PowerShell):
 ## 3) Cai dependency
 
 ```bash
-pip install -r requirements.txt
+uv pip install --python .venv/bin/python -r requirements.txt
 ```
 
 ## 4) Chay chuong trinh
@@ -33,27 +33,32 @@ pip install -r requirements.txt
 python main.py
 ```
 
-Sau do chi can tra loi cac cau hoi tren man hinh:
-- duong dan file CSV dau vao
-- cot du lieu can dua vao de tao comment
-- ten cot comment moi
-- mau comment
-- file CSV dau ra
+## Flow xu ly
 
-## Vi du mau comment
+1. Nhap file dau vao (`.csv` hoac `.xlsx`).
+2. Script tu dong chuan hoa header:
+- xoa khoang trang
+- chuyen lowercase
+- vi du: ` Sales Amount ` -> `salesamount`
+3. Script hoi template comment cho tung cot:
+- de trong neu khong muon comment cot do
+- placeholder ho tro: `{column}`, `{value}`, `{row_number}`
+4. Nhap ten cot comment va ky tu noi.
+5. Script tao file dau ra cung dinh dang voi file dau vao.
 
-Mau mac dinh:
+## Vi du template
+
+- Cot `salesamount`: `Sales={value}`
+- Cot `region`: `Region={value}`
+
+Ket qua 1 dong co the la:
 
 ```text
-Dong {row_number}: da ghi nhan '{value}'.
+Sales=120 | Region=HN
 ```
 
-Ban co the doi sang:
+## Chay test (pytest)
 
-```text
-Khach hang {value} da duoc lien he o dong {row_number}.
+```bash
+pytest -q
 ```
-
-## Ket qua
-
-Script se tao file moi (mac dinh: `<tenfile>_commented.csv`) voi cot `comment`.
