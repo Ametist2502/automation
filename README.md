@@ -1,73 +1,59 @@
 # auto_comment
 
-A simple Python tool that adds Excel header comments from a flat file (`CSV` or `XLSX`).
+`auto_comment` is a simple Python CLI that reads a flat file (`.csv` or `.xlsx`) and writes an Excel file (`.xlsx`) with comments attached to header cells.
 
-It is designed for non-technical users: run one command, answer prompts, and get an output file.
+Users can open the output file in Excel and hover each header cell to read its comment.
 
-## Important behavior
+## Key behavior
 
-- `CSV` files cannot store hover comments.
-- The output is always `.xlsx` so users can hover header cells to read comments.
-- The tool does **not** create a new `comment` column.
-
-## Features
-
-- Supports input files: `.csv`, `.xlsx`
-- Normalizes headers automatically:
-  - trims spaces
-  - lowercases text
-  - removes internal spaces
+- Input: `.csv` or `.xlsx`
+- Output: always `.xlsx`
+- No extra `comment` column is created
+- Header names are normalized before processing:
+  - trim spaces
+  - lowercase
+  - remove internal spaces
   - example: ` Sales Amount ` -> `salesamount`
-- Lets you define one header comment per column
-- Writes output as `.xlsx` with Excel comments attached to header cells
-- Logs execution details to a file
 
-## 1) Create virtual environment
+## Why output is always XLSX
+
+CSV format does not support Excel-style cell comments. To support hover comments, the tool writes `.xlsx` output.
+
+## Setup
 
 ```bash
 cd auto_comment
 uv venv
-```
-
-## 2) Activate virtual environment
-
-Linux/macOS:
-
-```bash
 source .venv/bin/activate
+uv pip install --python .venv/bin/python -r requirements.txt
 ```
 
 Windows (PowerShell):
 
 ```powershell
+cd auto_comment
+uv venv
 .venv\Scripts\Activate.ps1
+uv pip install --python .venv\Scripts\python.exe -r requirements.txt
 ```
 
-## 3) Install dependencies
-
-```bash
-uv pip install --python .venv/bin/python -r requirements.txt
-```
-
-## 4) Run the app
+## Run
 
 ```bash
 python main.py
 ```
 
-## How it works
+## Runtime flow
 
 1. Enter input file path (`.csv` or `.xlsx`).
-2. The app normalizes headers.
-3. Enter a header comment for each column.
-4. The app writes an `.xlsx` output file.
-5. Open output file and hover the header cells to read comments.
-
-If you leave a comment blank for a column, that column is skipped.
+2. Review normalized headers shown by the app.
+3. Enter header comment text for each column (leave blank to skip).
+4. Enter output file path (`.xlsx`).
+5. Open output in Excel and hover header cells.
 
 ## Logging
 
-The app writes logs to `auto_comment.log` by default.
+Default log file: `auto_comment.log`
 
 Log format:
 
@@ -75,7 +61,7 @@ Log format:
 timestamp-log level: content
 ```
 
-Actual pattern used:
+Implemented pattern:
 
 ```text
 YYYY-MM-DD HH:MM:SS-LEVEL: message
@@ -87,9 +73,7 @@ Example:
 2026-04-22 15:10:44-INFO: Application started
 ```
 
-### Custom log file path
-
-Set environment variable `AUTO_COMMENT_LOG_FILE` before running:
+Use a custom log path:
 
 ```bash
 AUTO_COMMENT_LOG_FILE=logs/run.log python main.py
